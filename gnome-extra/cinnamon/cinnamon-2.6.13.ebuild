@@ -20,8 +20,10 @@ SRC_URI="https://github.com/linuxmint/Cinnamon/archive/${MY_PV}.tar.gz -> ${MY_P
 
 LICENSE="GPL-2+"
 SLOT="0"
+
 # bluetooth support dropped due bug #511648
 IUSE="+nls +networkmanager" #+bluetooth
+
 # We need *both* python 2.7 and 3.x
 REQUIRED_USE="${PYTHON_REQUIRED_USE}
 	python_targets_python2_7
@@ -35,7 +37,7 @@ COMMON_DEPEND="
 	app-misc/ca-certificates
 	dev-libs/dbus-glib
 	>=dev-libs/glib-2.29.10:2[dbus]
-	>=dev-libs/gobject-introspection-0.10.1
+	>=dev-libs/gobject-introspection-0.10.1:=
 	>=dev-libs/json-glib-0.13.2
 	>=dev-libs/libcroco-0.6.2:0.6
 	dev-libs/libxml2:2
@@ -58,7 +60,7 @@ COMMON_DEPEND="
 	>=x11-libs/startup-notification-0.11
 	x11-libs/libX11
 	>=x11-libs/libXfixes-5.0
-	>=x11-wm/muffin-2.4[introspection]
+	>=x11-wm/muffin-2.5[introspection]
 	${PYTHON_DEPS}
 	networkmanager? (
 		gnome-base/libgnome-keyring
