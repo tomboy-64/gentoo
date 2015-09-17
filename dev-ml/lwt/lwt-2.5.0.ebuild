@@ -18,7 +18,7 @@ IUSE="gtk +react +ssl"
 
 DEPEND="react? ( >=dev-ml/react-1.2:= )
 	dev-libs/libev
-	ssl? ( >=dev-ml/ocaml-ssl-0.4.0:= )
+	ssl? ( >=dev-ml/ocaml-ssl-0.5.1:= )
 	gtk? ( dev-ml/lablgtk:= dev-libs/glib:2 )
 	|| ( dev-ml/camlp4:= <dev-lang/ocaml-4.02.0 )"
 
