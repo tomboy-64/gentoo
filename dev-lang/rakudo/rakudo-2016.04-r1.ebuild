@@ -29,7 +29,7 @@ DEPEND="${RDEPEND}
 	>=dev-lang/perl-5.10"
 
 REQUIRED_USE="|| ( java moar )"
-PATCHES=( "${FILESDIR}/${PN}-2016.04-Makefile.in.patch" )
+PATCHES=( "${FILESDIR}/${PN}-2016.04-Makefile.in.patch" "${FILESDIR}/patch2.patch" )
 
 pkg_pretend() {
 	if has_version dev-lang/rakudo && use java; then
@@ -68,14 +68,14 @@ src_configure() {
 }
 
 src_compile() {
-	emake DESTDIR="${D}"
+	emake RAKUDO_LIBJNIDISPATCH_DIR="/usr/$(get_libdir)/jna-4/" DESTDIR="${D}"
 }
 
 src_test() {
-	export RAKUDO_PRECOMP_PREFIX=$(mktemp -d)
+	export RAKUDO_LIBJNIDISPATCH_DIR="/usr/$(get_libdir)/jna-4/" RAKUDO_PRECOMP_PREFIX=$(mktemp -d)
 	default
 }
 
 src_install() {
-	emake DESTDIR="${D}" install
+	emake RAKUDO_LIBJNIDISPATCH_DIR="/usr/$(get_libdir)/jna-4/" DESTDIR="${D}" install
 }
