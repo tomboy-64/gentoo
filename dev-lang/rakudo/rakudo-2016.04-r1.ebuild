@@ -62,8 +62,6 @@ src_configure() {
 	local myargs=( "--prefix=/usr"
 		"--sysroot=/"
 		"--sdkroot=/"
-		"--make-install"
-		"--sdkroot=/"
 		"--backends=${backends}"
 	)
 	perl Configure.pl "${myargs[@]}"
