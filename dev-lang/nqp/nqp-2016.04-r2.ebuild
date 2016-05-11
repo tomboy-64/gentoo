@@ -4,7 +4,7 @@
 
 EAPI=6
 
-inherit java-pkg-2
+inherit java-pkg-opt-2
 
 if [[ ${PV} == "9999" ]]; then
 	EGIT_REPO_URI="https://github.com/perl6/${PN}.git"
@@ -27,6 +27,7 @@ RDEPEND="java? ( >=virtual/jre-1.7:*
 		system-libs? (
 			dev-java/asm:4
 			dev-java/jline:0
+			dev-java/jna:0
 		)
 	)
 	moar? ( ~dev-lang/moarvm-${PV}[clang=] )
@@ -37,14 +38,10 @@ DEPEND="${RDEPEND}
 	dev-lang/perl"
 PATCHES=( "${FILESDIR}/enable-external-jars.patch" )
 
-pkg_setup() {
-	use java && java-pkg-2_pkg_setup
-}
-
 src_prepare() {
 	eapply "${PATCHES[@]}"
 	eapply_user
-	use java && java-pkg-2_src_prepare
+	use java && java-pkg-opt-2_src_prepare
 }
 
 src_unpack() {
@@ -71,7 +68,8 @@ src_configure() {
 			myconfargs+=(
 				"--with-asm=$(echo $(java-pkg_getjars asm-4) | tr : '\n' | grep '/asm\.jar$')"
 				"--with-asm-tree=$(echo $(java-pkg_getjars asm-4) | tr : '\n' | grep '/asm-tree\.jar$')"
-				"--with-jline=$(echo $(java-pkg_getjars jline) | tr : '\n' | grep '/jline\.jar$')" )
+				"--with-jline=$(echo $(java-pkg_getjars jline) | tr : '\n' | grep '/jline\.jar$')"
+				"--with-jna=$(echo $(java-pkg_getjars jna-4) | tr : '\n' | grep '/jna\.jar$')" )
 		else
 			einfo "USE=system-libs set, but this won't have any effect without USE=java."
 		fi
