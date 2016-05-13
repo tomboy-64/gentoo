@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-EAPI=6
+EAPI=5
 
 inherit java-pkg-opt-2
 
@@ -12,6 +12,7 @@ if [[ ${PV} == "9999" ]]; then
 	KEYWORDS=""
 else
 	SRC_URI="https://github.com/perl6/${PN}/tarball/${PV} -> ${P}.tar.gz"
+	inherit vcs-snapshot
 	KEYWORDS="~x86 ~amd64"
 fi
 
@@ -20,78 +21,94 @@ HOMEPAGE="http://rakudo.org/"
 
 LICENSE="Artistic-2"
 SLOT="0"
-IUSE="doc clang java +moar +system-libs test"
+IUSE="doc clang java +moar test"
 REQUIRED_USE="|| ( java moar )"
 
-RDEPEND="java? ( >=virtual/jre-1.7:*
-		system-libs? (
-			dev-java/asm:4
-			dev-java/jline:0
-			dev-java/jna:0
-		)
+CDEPEND="java? (
+		dev-java/asm:4
+		dev-java/jline:0
+		dev-java/jna:4
 	)
 	moar? ( ~dev-lang/moarvm-${PV}[clang=] )
 	dev-libs/libffi"
-DEPEND="${RDEPEND}
+RDEPEND="${CDEPEND}
+	java? ( >=virtual/jre-1.7:* )"
+DEPEND="${CDEPEND}
 	clang? ( sys-devel/clang )
 	java? ( >=virtual/jdk-1.7:* )
 	dev-lang/perl"
-PATCHES=( "${FILESDIR}/enable-external-jars.patch" )
 
-src_prepare() {
-	eapply "${PATCHES[@]}"
-	eapply_user
-	use java && java-pkg-opt-2_src_prepare
-}
+java_prepare() {
+	# Don't clean stage0 jars.
+	java-pkg_clean 3rdparty/
 
-src_unpack() {
-	if [[ ${PV} == "9999" ]]; then
-		git-r3_src_unpack
-	else
-		unpack ${A}
-		mv "${WORKDIR}/perl6-nqp-"* "${WORKDIR}/${P}" || die
-	fi
+	# Don't use jars we just deleted.
+	sed -i -r 's/(:3rdparty[^:]*)+/:${THIRDPARTY_JARS}/g' \
+		src/vm/jvm/runners/nqp-j || die
 }
 
 src_configure() {
 	local backends
 	use java && backends+="jvm,"
 	use moar && backends+="moar"
+
 	local myconfargs=(
 		"--backend=${backends}"
 		"--prefix=/usr" )
 
-	# 2016.04 doesn't like our jna-3.4.1 nor jna-4.1.0
-	# keep testing against it
-	if use system-libs; then
-		if use java; then
-			myconfargs+=(
-				"--with-asm=$(echo $(java-pkg_getjars asm-4) | tr : '\n' | grep '/asm\.jar$')"
-				"--with-asm-tree=$(echo $(java-pkg_getjars asm-4) | tr : '\n' | grep '/asm-tree\.jar$')"
-				"--with-jline=$(echo $(java-pkg_getjars jline) | tr : '\n' | grep '/jline\.jar$')"
-				"--with-jna=$(echo $(java-pkg_getjars jna-4) | tr : '\n' | grep '/jna\.jar$')" )
-		else
-			einfo "USE=system-libs set, but this won't have any effect without USE=java."
-		fi
-	fi
-
 	perl Configure.pl "${myconfargs[@]}" || die
+
+	if use java; then
+		# Export this for the script we sed'd above.
+		export THIRDPARTY_JARS=$(java-pkg_getjars --with-dependencies asm-4,jline,jna-4)
+	fi
 }
 
 src_compile() {
-	MAKEOPTS=-j1 emake
+	if use java; then
+		emake -j1 \
+			  THIRDPARTY_JARS="${THIRDPARTY_JARS}" \
+			  JAVAC="$(java-pkg_get-javac) $(java-pkg_javac-args)"
+	else
+		emake -j1
+	fi
 }
 
 src_test() {
-	MAKEOPTS=-j1 emake test
+	emake -j1 test
 }
 
 src_install() {
-	emake DESTDIR="${ED}" install || die
+	if use java; then
+		# Set JAVA_PKG_JARDEST early.
+		java-pkg_init_paths_
 
-	dodoc CREDITS README.pod || die
+		# Upstream sets the classpath to this location. Perhaps it's
+		# used to locate the additional libraries?
+		java-pkg_addcp "${JAVA_PKG_JARDEST}"
 
-	if use doc; then
-		dodoc -r docs/* || die
+		insinto "${JAVA_PKG_JARDEST}"
+		local jar
+
+		for jar in *.jar; do
+			if has ${jar} ${PN}.jar ${PN}-runtime.jar; then
+				# jars for NQP itself.
+				java-pkg_dojar ${jar}
+			else
+				# jars used by NQP.
+				doins ${jar}
+			fi
+		done
+
+		# Upstream uses -Xbootclasspath/a, which is faster due to lack
+		# of verification, but gjl isn't flexible enough yet. :(
+		java-pkg_dolauncher ${PN}-j --main ${PN}
+		dosym ${PN}-j /usr/bin/${PN}
+		dobin tools/jvm/eval-client.pl
+	else
+		emake DESTDIR="${ED}" install
 	fi
+
+	dodoc CREDITS README.pod
+	use doc && dodoc -r docs/*
 }
