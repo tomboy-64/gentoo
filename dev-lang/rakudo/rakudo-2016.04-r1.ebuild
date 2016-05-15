@@ -4,7 +4,7 @@
 
 EAPI=6
 
-inherit java-pkg-2
+inherit java-pkg-opt-2
 
 DESCRIPTION="A compiler for the Perl 6 programming language"
 HOMEPAGE="http://rakudo.org"
@@ -22,24 +22,22 @@ LICENSE="Artistic-2"
 SLOT="0"
 # TODO: add USE="javascript" once that's usable in nqp
 IUSE="clang java +moar test"
+REQUIRED_USE="|| ( java moar )"
 
-RDEPEND="~dev-lang/nqp-${PV}:=[java=,moar=,clang=]"
-DEPEND="${RDEPEND}
+CDEPEND="~dev-lang/nqp-${PV}:${SLOT}=[java=,moar=,clang=]"
+
+RDEPEND="${CDEPEND}
+	java? ( >=virtual/jre-1.7:* )"
+
+DEPEND="${CDEPEND}
 	clang? ( sys-devel/clang )
+	java? ( >=virtual/jdk-1.7:* )
 	>=dev-lang/perl-5.10"
 
-REQUIRED_USE="|| ( java moar )"
-PATCHES=( "${FILESDIR}/${PN}-2016.04-Makefile.in.patch" "${FILESDIR}/patch2.patch" )
-
-pkg_pretend() {
-	if has_version dev-lang/rakudo && use java; then
-		die "Rakudo is known to fail compilation with the jvm backend if it's already installed."
-	fi
-}
-
-pkg_setup() {
-	use java && java-pkg-2_pkg_setup
-}
+PATCHES=(
+	"${FILESDIR}/${PN}-2016.04-Makefile.in.patch"
+	"${FILESDIR}/${PN}-jna-lib.patch"
+)
 
 src_prepare() {
 	eapply "${PATCHES[@]}"
@@ -52,30 +50,36 @@ src_prepare() {
 	done
 
 	eapply_user
-	use java && java-pkg-2_src_prepare
+	java-pkg-opt-2_src_prepare
 }
 
 src_configure() {
 	local backends
 	use java && backends+="jvm,"
 	use moar && backends+="moar,"
-	local myargs=( "--prefix=/usr"
+
+	local myargs=(
+		"--prefix=/usr"
 		"--sysroot=/"
 		"--sdkroot=/"
 		"--backends=${backends}"
 	)
+
 	perl Configure.pl "${myargs[@]}"
+
+	if use java; then
+		NQP=$(java-pkg_getjars --with-dependencies nqp)
+	fi
 }
 
 src_compile() {
-	emake RAKUDO_LIBJNIDISPATCH_DIR="/usr/$(get_libdir)/jna-4/" DESTDIR="${D}"
-}
-
-src_test() {
-	export RAKUDO_LIBJNIDISPATCH_DIR="/usr/$(get_libdir)/jna-4/" RAKUDO_PRECOMP_PREFIX=$(mktemp -d)
-	default
+	emake DESTDIR="${D}" NQP_JARS="${NQP}" BLD_NQP_JARS="${NQP}"
 }
 
 src_install() {
-	emake RAKUDO_LIBJNIDISPATCH_DIR="/usr/$(get_libdir)/jna-4/" DESTDIR="${D}" install
+	emake DESTDIR="${D}" NQP_JARS="${NQP}" BLD_NQP_JARS="${NQP}" install
+}
+
+src_test() {
+	RAKUDO_PRECOMP_PREFIX=$(mktemp -d) default
 }
