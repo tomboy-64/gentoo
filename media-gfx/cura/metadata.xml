@@ -19,6 +19,7 @@
     </maintainer>
 	<use>
 		<flag name="usb">Access 3D printers via USB</flag>
+		<flag name="zeroconf">Detect mDNS-enabled printers</flag>
 	</use>
     <upstream>
 		<remote-id type="github">Ultimaker/Cura</remote-id>
